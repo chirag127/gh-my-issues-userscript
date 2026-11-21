@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GitHub: My Issues Button
 // @namespace    https://github.com/chirag127
-// @version      1.0.0
+// @version      1.0.3
 // @description  Adds a "My issues" button to GitHub's header that opens all issues involving your account.
 // @author       chirag127
 // @match        https://github.com/*
@@ -18,6 +18,11 @@
   const LABEL = 'My issues';
 
   function mount() {
+    // Only wrappers we marked are ours to clean. Another script's wrapper or a
+    // foreign node that merely shares the class must survive untouched.
+    for (const wrapper of document.querySelectorAll('[data-chirag-nav-id="' + ID + '"]')) {
+      if (wrapper.tagName !== 'A' && !wrapper.querySelector('a[href]')) wrapper.remove();
+    }
     if (document.getElementById(ID)) return;
 
     const nav =
@@ -26,13 +31,27 @@
       document.querySelector('header nav');
     if (!nav) return;
 
-    const templateLink = nav.querySelector('a[href]');
-    const template = templateLink ? templateLink.closest('li') || templateLink : null;
-    const item = template ? template.cloneNode(true) : document.createElement('li');
-    const link = item.tagName.toLowerCase() === 'a' ? item : item.querySelector('a[href]') || document.createElement('a');
+    const host = nav.matches('ul, ol') ? nav : nav.querySelector('ul, ol') || nav;
+    const templateLink = host.querySelector('a[href]:not(.chirag-gh-nav-button):not(.chirag-gh-nav-button a)');
+    const list = host.matches('ul, ol');
+    const templateItem = templateLink?.closest('li');
+    const item = list
+      ? templateItem?.parentElement === host ? templateItem.cloneNode(true) : document.createElement('li')
+      : templateLink ? templateLink.cloneNode(false) : document.createElement('a');
+    const link = item.tagName === 'A' ? item : item.querySelector('a[href]') || document.createElement('a');
+
+    // A cloned breadcrumb can contain menu buttons, counters and duplicate ids.
+    if (item !== link) item.replaceChildren(link);
+    for (const element of new Set([item, link])) {
+      for (const { name } of [...element.attributes]) {
+        if (name !== 'class') element.removeAttribute(name);
+      }
+      element.classList.remove('active', 'selected');
+    }
 
     item.removeAttribute('id');
     item.classList.add('chirag-gh-nav-button');
+    item.setAttribute('data-chirag-nav-id', ID);
     link.id = ID;
     link.href = HREF;
     link.textContent = LABEL;
@@ -41,9 +60,7 @@
     link.removeAttribute('aria-current');
     link.removeAttribute('data-selected-links');
     link.removeAttribute('data-ga-click');
-    if (!link.parentNode || link.parentNode !== item) item.appendChild(link);
-
-    const host = nav.tagName.toLowerCase() === 'ul' ? nav : nav.querySelector('ul') || nav;
+    if (item !== link && link.parentNode !== item) item.appendChild(link);
     host.appendChild(item);
   }
 

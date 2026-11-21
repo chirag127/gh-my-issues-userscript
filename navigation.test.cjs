@@ -150,3 +150,46 @@ test('stale cleanup removes only this script\'s own wrapper', () => {
   h.verify(nav);
   assert.equal(nav.querySelectorAll('[data-chirag-nav-id="' + otherId + '"]').length, 1);
 });
+test('restores identity on an owned link instead of appending a duplicate', () => {
+  const h = harness(); const nav = h.nav('ul'); h.native(nav); h.run();
+  h.verify(nav).removeAttribute('id');
+  h.mutate(); h.verify(nav);
+  assert.equal(nav.querySelectorAll('a[href="' + HREF + '"]').length, 1);
+  assert.equal(nav.querySelectorAll('li[data-chirag-nav-id="' + ID + '"]').length, 1);
+});
+test('clones the filtered native anchor from a mixed foreign/native li', () => {
+  const h = harness(); const nav = h.nav('ul'); const donor = nav.appendChild(new Element('li'));
+  const foreign = donor.appendChild(new Element('a')); foreign.href = '/foreign'; foreign.id = 'other-script'; foreign.classList.add('chirag-gh-nav-button', 'foreign-style');
+  const native = donor.appendChild(new Element('a')); native.href = '/dashboard'; native.classList.add('native-link');
+  h.run(); const link = h.verify(nav);
+  assert.equal(link.classList.contains('foreign-style'), false);
+  assert.equal(link.classList.contains('native-link'), true);
+  assert.equal(foreign.parentNode, donor);
+  assert.equal(donor.querySelectorAll('a[href]').length, 2);
+});
+test('nested native template keeps its classes in the fresh-li fallback', () => {
+  const h = harness(); const nav = h.nav(); const host = nav.appendChild(new Element('ul'));
+  const mid = host.appendChild(new Element('li')); const inner = mid.appendChild(new Element('ul')); const deep = inner.appendChild(new Element('li'));
+  const native = deep.appendChild(new Element('a')); native.href = '/dashboard'; native.classList.add('native-link');
+  h.run(); const link = h.verify(host);
+  assert.equal(link.classList.contains('native-link'), true);
+  assert.equal(deep.querySelectorAll('a[href]').length, 1);
+});
+test('valid mounted link skips document-wide ownership queries', () => {
+  const h = harness(); const nav = h.nav('ul'); h.native(nav); h.run(); h.verify(nav);
+  const original = h.document.querySelectorAll; let calls = 0;
+  h.document.querySelectorAll = selector => { calls++; return original.call(h.document, selector); };
+  for (let i = 0; i < 5; i++) h.mutate();
+  assert.equal(calls, 0);
+});
+test('host selection skips a list inside a foreign wrapper', () => {
+  const h = harness(); const nav = h.nav();
+  const foreignList = nav.appendChild(new Element('ul'));
+  foreignList.classList.add('chirag-gh-nav-button');
+  const foreignLink = foreignList.appendChild(new Element('li')).appendChild(new Element('a'));
+  foreignLink.href = '/foreign';
+  const nativeList = nav.appendChild(new Element('ul')); h.native(nativeList);
+  h.run(); const link = h.verify(nativeList);
+  assert.equal(link.parentNode.parentNode, nativeList);
+  assert.equal(foreignList.querySelectorAll('a[href]').length, 1);
+});

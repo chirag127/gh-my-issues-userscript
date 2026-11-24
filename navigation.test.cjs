@@ -256,6 +256,13 @@ test('reclaims a direct anchor only when its destination still matches', () => {
   assert.equal(restored.getAttribute('href'), HREF);
   assert.equal(restored.parentNode, nav);
 });
+for (const tag of ['nav', 'ul', 'ol']) test('restores label and title with a missing id in ' + tag, () => {
+  const h = harness(); const nav = h.nav(tag); h.native(nav); h.run();
+  const link = h.verify(nav); link.removeAttribute('id'); link.textContent = 'Dashboard'; link.title = 'Dashboard';
+  h.mutate();
+  assert.equal(h.verify(nav), link);
+  assert.equal(nav.querySelectorAll('a[href="' + HREF + '"]').length, 1);
+});
 test('reconciles an anchor moved out of its owned wrapper', () => {
   const h = harness(); const nav = h.nav('ul'); h.native(nav); h.run();
   nav.appendChild(h.verify(nav));

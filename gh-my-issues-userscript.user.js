@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GitHub: My Issues Button
 // @namespace    https://github.com/chirag127
-// @version      1.0.5
+// @version      1.0.6
 // @description  Adds a "My issues" button to GitHub's header that opens all issues involving your account.
 // @author       chirag127
 // @match        https://github.com/*
@@ -51,13 +51,21 @@
       if (!owned.parentNode) continue;
       if (owned.tagName === 'A') {
         if (owned.getAttribute('href') !== HREF) owned.remove();
-        else if (owned.id !== ID) owned.id = ID;
+        else if (owned.id !== ID) {
+          owned.id = ID;
+          owned.textContent = LABEL;
+          owned.title = LABEL;
+        }
         continue;
       }
       const ownedLink = Array.from(owned.querySelectorAll('a[href]'))
         .find(a => a.getAttribute('href') === HREF);
       if (!ownedLink || !ownedLink.getAttribute('href')) owned.remove();
-      else if (ownedLink.id !== ID) ownedLink.id = ID;
+      else if (ownedLink.id !== ID) {
+        ownedLink.id = ID;
+        ownedLink.textContent = LABEL;
+        ownedLink.title = LABEL;
+      }
     }
     if (document.getElementById(ID)) return;
 
